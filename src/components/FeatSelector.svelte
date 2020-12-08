@@ -80,9 +80,12 @@
     }
     table.simple-table td {
         padding: 3px 4px;
+        /* font-size: .75rem;
+        color: red; */
     }
     table.simple-table tbody td {
         font-size: .75rem;
+        /* color: red; */
     }
     /* table.simple-table tr:nth-child(odd) {
         background: #ebebeb;
@@ -98,8 +101,6 @@
 
 <div id="feat-selector">
     <h1>Select Genes:</h1>
-    <!-- <Select isClearable={false} items={data_options} bind:selectedValue={selected_data} ></Select> -->
-    <!-- on:change="{() => answer = ''}" -->
 
     <table>
         <tbody>
@@ -123,35 +124,14 @@
                     <input class="numInput" type="number" bind:value={end_index} min="0" />   
                 </td>
                 <td>
-                    <button class="" on:click={selectByIndex}>Go!</button>     
+                    <button class="" on:click={selectByIndex}>Select Range</button>     
                     <button class="" on:click={clearSelection}>Clear</button>
                 </td>
             </tr>
 
         </tbody>
     </table>
-    <!-- <div class="blockDiv">
-        Select Ranking List:
-        <select bind:value={selected_data} >
-            {#each data_options as d}
-                <option value={d.value}>
-                    {d.label}
-                </option>
-            {/each}
-        </select>
-    </div> -->
     
-    <!-- <p>{JSON.stringify(curr_gene_data.slice(0, 10))}</p> -->
-
-
-    <!-- <div class="blockDiv">
-            Start:&nbsp;&nbsp;<input class="numInput" type="number" bind:value={start_index} min="0" />&nbsp;
-            End:&nbsp;&nbsp;<input class="numInput" type="number" bind:value={end_index} min="0" />   
-            <button class="" on:click={selectByIndex}>Select</button>     
-    </div>
-    <div class="blockDiv">
-        <button class="" on:click={clearSelection}>Clear Selection</button>
-    </div> -->
     <div class="tableWrapper">
         <table class="simple-table">
             <thead>

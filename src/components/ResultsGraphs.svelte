@@ -98,7 +98,7 @@
         padding: 3px 4px;
     }
     table.simple-table tbody td {
-        font-size: 0.75rem;
+        font-size: 1rem;
     }
     /* table.simple-table tr:nth-child(odd) {
         background: #ebebeb;
