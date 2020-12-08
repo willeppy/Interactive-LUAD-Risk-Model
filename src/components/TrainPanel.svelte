@@ -48,13 +48,10 @@
         promise = postAPI(request_data);
     }
 
-    // TEMP
-    // let m = {"metrics": [{"metric": "f1_weighted", "value": 0.8409703504043128}, {"metric": "fskl", "value": 0.408}]}
-
     // console.log(m.metrics)
 </script>
 
-<style>
+<style type="text/scss">
     #feat-selector {
         /* border: 1px solid rgb(87, 130, 209); */
         padding: 1rem;
@@ -74,11 +71,136 @@
         font-style: italic;
     }
 
-    
+    /* Loading animation */
+
+    .load-wrapper {
+        width: 100%;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        // align-items: center;
+        padding-top: 5rem;
+
+        .loading {
+            width: 80px;
+            height: 50px;
+            position: relative;
+
+            p {
+                top: 0;
+                padding: 0;
+                margin: 0;
+                color: #5389a6;
+                animation: text 3.5s ease both infinite;
+                font-size: 12px;
+                letter-spacing: 1px;
+
+                @keyframes text {
+                    0% {
+                        letter-spacing: 1px;
+                        transform: translateX(0px);
+                    }
+
+                    40% {
+                        letter-spacing: 2px;
+                        transform: translateX(26px);
+                    }
+
+                    80% {
+                        letter-spacing: 1px;
+                        transform: translateX(32px);
+                    }
+
+                    90% {
+                        letter-spacing: 2px;
+                        transform: translateX(0px);
+                    }
+
+                    100% {
+                        letter-spacing: 1px;
+                        transform: translateX(0px);
+                    }
+                }
+            }
+            span {
+                background-color: #5389a6;
+                border-radius: 50px;
+                display: block;
+                height: 16px;
+                width: 16px;
+                bottom: 0;
+                position: absolute;
+                transform: translateX(64px);
+                animation: loading 3.5s ease both infinite;
+
+                &:before {
+                    position: absolute;
+                    content: "";
+                    width: 100%;
+                    height: 100%;
+                    background-color: #a6dcee;
+                    border-radius: inherit;
+                    animation: loading2 3.5s ease both infinite;
+                }
+
+                @keyframes loading {
+                    0% {
+                        width: 16px;
+                        transform: translateX(0px);
+                    }
+
+                    40% {
+                        width: 100%;
+                        transform: translateX(0px);
+                    }
+
+                    80% {
+                        width: 16px;
+                        transform: translateX(64px);
+                    }
+
+                    90% {
+                        width: 100%;
+                        transform: translateX(0px);
+                    }
+
+                    100% {
+                        width: 16px;
+                        transform: translateX(0px);
+                    }
+                }
+                @keyframes loading2 {
+                    0% {
+                        transform: translateX(0px);
+                        width: 16px;
+                    }
+
+                    40% {
+                        transform: translateX(0%);
+                        width: 80%;
+                    }
+
+                    80% {
+                        width: 100%;
+                        transform: translateX(0px);
+                    }
+
+                    90% {
+                        width: 80%;
+                        transform: translateX(15px);
+                    }
+                    100% {
+                        transform: translateX(0px);
+                        width: 16px;
+                    }
+                }
+            }
+        }
+    }
 </style>
 
 <div id="feat-selector">
-    <h1>Train Model:</h1>
+    <h1>Risk Model</h1>
 
     <h3>Model Meta-data:</h3>
     <table class="simple-table">
@@ -109,8 +231,6 @@
     <button on:click={handleClick}>Train Model!</button>
 
     {#await promise}
-        <!-- <p>...Running...</p> -->
-
         <div class="load-wrapper">
             <div class="loading">
                 <p>Running...</p>
@@ -118,7 +238,6 @@
             </div>
         </div>
     {:then respObj}
-        <!-- <p>The response is {JSON.stringify(respObj)}</p> -->
         {#if respObj != undefined}
             <ResultsGraphs input_data={JSON.parse(respObj)} />
         {/if}

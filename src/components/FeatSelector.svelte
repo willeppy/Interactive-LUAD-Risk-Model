@@ -1,6 +1,5 @@
 <script>
     import { selected_genes, gene_data_tvh, gene_data_risk} from "../stores";
-    import Select from 'svelte-select';
 
     // local variables
     let gene_arr_tvh = $gene_data_tvh.map((item) => item.GENE);
@@ -100,7 +99,7 @@
 </style>
 
 <div id="feat-selector">
-    <h1>Select Genes:</h1>
+    <h1>Select Genes</h1>
 
     <table>
         <tbody>

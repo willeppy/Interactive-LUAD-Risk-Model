@@ -124,13 +124,6 @@ def get_feature_importance(classifier_name, clf, X):
 
     for f, imp in zip(X.columns.tolist(), feat_imps):
         d.append({"feat": f, "imp": imp})
-
-    # d = pd.DataFrame({"feat": X.columns.tolist(), "imp": feat_imps})
-    # d = d.to_json(orient="records")
-    
-    # print("In get_feature_importance")
-    # for k, v in d.items():
-    #     print(type(k), type(v))
     
     return d
 
@@ -147,7 +140,6 @@ def get_survival_curve(df, model_output):
     # build event table
     event_table_0 = build_event_table(group_0, idx)
     event_table_1 = build_event_table(group_1, idx)
-    print("eventtable1:",event_table_1)
     
     # log rank test 
     group_0["obs"] = (group_0["death_days_to"] != 1000000).astype(int)
@@ -167,12 +159,6 @@ def get_survival_curve(df, model_output):
     events_group_0 = event_table_0.p.values.tolist()
     events_group_1 = event_table_1.p.values.tolist()
 
-    print("IN SURVIVAL CURVE")
-    # print("Days: ", type(days), type(days[0]))
-    # print("gp_0_events: ", type(events_group_0), type(events_group_0[0]))
-    # print("gp_1_events: ", type(events_group_1))
-    # print("p_val: ", type(p_val))
-
     # format data 
     resp = {"data": [], "p_val": p_val}
 
@@ -180,9 +166,6 @@ def get_survival_curve(df, model_output):
         _item = {"day": days[i], "gp_0": events_group_0[i], "gp_1": events_group_1[i]}
         resp["data"].append(_item)
 
-    # resp = {"days": days, "gp_0_events": events_group_0, "gp_1_events": events_group_1, "p_val": p_val }
-    # print(resp)
-    
     return resp
 
 
@@ -213,16 +196,16 @@ def build_event_table(group_data, idx):
 
 '''
 classifier_name: 'Random_Forest', 'Logistic_Regression' and 'SVM'
-prediction_type: 'cancer_vs_normal' or 'highrisk_vs_lowrisk'
+prediction_type: 'normal_vs_tumor' or 'lowrisk_vs_highrisk'
 genelist: list of gene names, e.g. ['AAAS','ERAS','MPO','BTBD2','MYG1']
 
 '''
 def run_model_creation(data_df, classifier_name, prediction_type, genelist, day_thresh):
-    print("In create model.")
-    print("\tModel Type: ", classifier_name)
-    print("\tOutput variable: ", prediction_type)
-    print("\tGenes: ", genelist)
-    print("\tData looks like: ", data_df.shape)
+    # print("In create model.")
+    # print("\tModel Type: ", classifier_name)
+    # print("\tOutput variable: ", prediction_type)
+    # print("\tGenes: ", genelist)
+    # print("\tData looks like: ", data_df.shape)
 
     # normlize X and select right y 
     X, y = prepare_data(data_df, genelist, prediction_type, day_threshold=day_thresh)
@@ -232,10 +215,6 @@ def run_model_creation(data_df, classifier_name, prediction_type, genelist, day_
 
     predictions = best_clf.predict(X)
 
-#     return predictions
-
-# def temp():
-
     km_curve = get_survival_curve(data_df, predictions)
 
     feat_importance = get_feature_importance(classifier_name, best_clf, X)
@@ -243,9 +222,10 @@ def run_model_creation(data_df, classifier_name, prediction_type, genelist, day_
     response = {"metrics": metrics_dict,  
                 "predictions": predictions.tolist(), 
                 "km_curve": km_curve,
-                "feat_importance": feat_importance}
+                "feat_importance": feat_importance,
+                "prediction_type": prediction_type}
 
     json_res = json.dumps(response)
-    print(json_res)
+    # print(json_res)
     return json_res
 

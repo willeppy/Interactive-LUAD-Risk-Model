@@ -18,7 +18,9 @@
     "svelte": "^3.0.0"
   },
   "dependencies": {
+    "node-sass": "^5.0.0",
     "sirv-cli": "^1.0.0",
+    "svelte-preprocess": "^4.6.1",
     "svelte-select": "^3.14.1",
     "svelte-simple-datatables": "^0.1.25",
     "vega": "^5.17.0",

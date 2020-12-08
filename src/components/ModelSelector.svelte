@@ -41,15 +41,15 @@
 </style>
 
 <div id="model-selector">
-    <h1>Select Model Options:</h1>
+    <h1>Select Model Options</h1>
     <p>Grid Search is automatically run to find the best hyperparameters.</p>
 
-    <h3>Model Type:</h3>
+    <h3>Model Type</h3>
     <div class="modelSel">
         <Select isClearable={false} items={model_options} bind:selectedValue={$selected_model} ></Select>
     </div>
 
-    <h3>Prediction Type:</h3>
+    <h3>Prediction Type</h3>
     <p>Select an output task to model. If selecting low vs. high risk select a threshold (in days). Patients that survive beyond this threshold are "low risk".</p>
     <div class="modelSel">
         <Select isClearable={false} items={predict_options} bind:selectedValue={select_pred_type} ></Select>
