@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import json
+import math
 
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.linear_model import LogisticRegression
@@ -9,7 +11,9 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
 from sklearn.model_selection import GridSearchCV
 
-import json
+from lifelines.statistics import logrank_test
+import shap
+
 
 # gridsearchCV throws lots of warnings so supress bc not critical
 import warnings
@@ -26,6 +30,7 @@ NOTE: death_days_to = 1_000_000 means they are censored and didnt die in data
 '''
 def prepare_data(data_df, genelist, prediction_type, day_threshold=600):
     X = data_df[genelist]
+    X = (X - X.mean()) / X.std()
 
     if prediction_type == 'normal_vs_tumor': # 0 = normal, 1 = tumor
         y = data_df["y_is_tumor"] 
@@ -40,7 +45,6 @@ TODO: add class_weight to hyperparameter search
 
 '''
 def train_model(X, y, classifier_name, scoring=["f1_weighted", "balanced_accuracy"]):
-    X = (X - X.mean()) / X.std()
         
     if classifier_name == 'RF':
         clf = RandomForestClassifier()
@@ -70,83 +74,141 @@ def train_model(X, y, classifier_name, scoring=["f1_weighted", "balanced_accurac
     
     # get average metrics
     metric_df = pd.DataFrame(cv.cv_results_)
-    metrics = {}
+    metrics = []
     
     for m in scoring:
         _val = metric_df[metric_df[f"rank_test_{scoring[0]}"] == 1][f"mean_test_{m}"].values[0]
-        metrics[m] = _val
+        metrics.append({"metric":m, "value":_val})
         
     return best_clf, metrics
 
 
 '''
-TODO change this to Get feature importance for any model
+If using LR, then take the model coefficients.
+Otherwise, compute SHAP values.
+
+SHAP: https://shap.readthedocs.io/en/latest/api.html
 
 '''
-def get_feature_importance(final_genelist, model_name, X, y):
-    ...
+def get_feature_importance(classifier_name, clf, X):
+   
+    if classifier_name == 'LR':
+        ### taks abs val of coefficients of linear model
+        feat_imps = abs(clf.coef_.flatten()).tolist() 
+    
+    elif classifier_name in ["RF", "DT"]:
+        ### TreeExplainer is super fast for tree methods
+        
+        background = shap.maskers.Independent(X, max_samples=500)
+        explainer = shap.TreeExplainer(clf, masker=background)
+        shap_vals = explainer(X)
+        
+        feat_imps = shap_vals.abs.values.mean(axis=0)[:,0].tolist()
+    
+    else: # ["NN", "SVM"]
+        
+        ### generic method -- super slow!!
+        # background = shap.maskers.Independent(X, max_samples=100)
+        # explainer = shap.Explainer(clf, background)
+        # shap_vals = explainer(X)
+        # feat_imps = shap_vals.abs.values.mean(axis=0).tolist()
+        
+        ### Kernel Explainer is a bit faster
+        med = np.median(X, axis=0).reshape(1, -1)
+        explainer = shap.KernelExplainer(clf.predict, med)
+        shap_vals = explainer.shap_values(X)
+        feat_imps = abs(shap_vals.mean(axis=0)).tolist()
+    
+    # d = dict(zip(X.columns.tolist(), feat_imps))
+    d = []
+
+    for f, imp in zip(X.columns.tolist(), feat_imps):
+        d.append({"feat": f, "imp": imp})
+
+    # d = pd.DataFrame({"feat": X.columns.tolist(), "imp": feat_imps})
+    # d = d.to_json(orient="records")
+    
+    # print("In get_feature_importance")
+    # for k, v in d.items():
+    #     print(type(k), type(v))
+    
+    return d
 
 
+def get_survival_curve(df, model_output):
+    
+    _dftrim = df[["bcr_patient_barcode", "death_days_to"]]
+        
+    idx = np.sort(_dftrim["death_days_to"].astype(int).unique())[:-1] # ignore the max because is 1_000_000
 
-'''
-
-TODO: yuying create survival analysis curve https://drive.google.com/file/d/1CZZ__yCDHblV_K3DeU5SiK0ty72IAaFr/view
-
-df_2["days_to_initial_pathologic_diagnosis"] -- all 0's
-
-df_2["death_days_to"] -- at what time step did death happen (or never happen if [Not Applicable])
-
-use these to creat Kaplan meier curve with below data
-    df["death_days_to", "model_output"] 
-    model output is either 1/0
-
-'''
-def get_survival_curve():
-    # load the data
-    df = pd.read_csv('model_input_data.csv')
-    # split the data according to model_output
-    df= df.iloc[:,:3]
-    df['model_output'] = model_output
-    group_0 = df[df['model_output']==0]
-    group_1 = df[df['model_output']==1]
+    group_0 = _dftrim[model_output==0]
+    group_1 = _dftrim[model_output==1]
+    
     # build event table
-    event_table_0 = build_event_table(group_0)
-    event_table_1 = build_event_table(group_1)
-    # plot the curve
-    x = np.arange(0,4962)
-    plt.plot(x,event_table0['p'])
-    plt.plot(x,event_table1['p'])
-    plt.title('The Kaplan-Meier Estimate')
-    plt.show()
+    event_table_0 = build_event_table(group_0, idx)
+    event_table_1 = build_event_table(group_1, idx)
+    print("eventtable1:",event_table_1)
+    
+    # log rank test 
+    group_0["obs"] = (group_0["death_days_to"] != 1000000).astype(int)
+    group_1["obs"] = (group_1["death_days_to"] != 1000000).astype(int)
+    
+    stat_test = logrank_test(group_0["death_days_to"], 
+                             group_1["death_days_to"], 
+                             event_observed_A=group_0["obs"], 
+                             event_observed_B=group_1["obs"])
+    
+    # change types of outputs
+    p_val = float(stat_test.p_value)
+    if math.isnan(p_val):
+        p_val = 100.0 # this only happens when one of the groups is empty
+    
+    days = idx.tolist()
+    events_group_0 = event_table_0.p.values.tolist()
+    events_group_1 = event_table_1.p.values.tolist()
 
-# function to build_event_table, which will be used by get_survival_curve()
-def build_event_table(group_data):
-    #the max day is 4961
-    event_table = pd.DataFrame(data=np.zeros((4962,2)), columns=['event','at_risk'])
+    print("IN SURVIVAL CURVE")
+    # print("Days: ", type(days), type(days[0]))
+    # print("gp_0_events: ", type(events_group_0), type(events_group_0[0]))
+    # print("gp_1_events: ", type(events_group_1))
+    # print("p_val: ", type(p_val))
+
+    # format data 
+    resp = {"data": [], "p_val": p_val}
+
+    for i in range(len(days)):
+        _item = {"day": days[i], "gp_0": events_group_0[i], "gp_1": events_group_1[i]}
+        resp["data"].append(_item)
+
+    # resp = {"days": days, "gp_0_events": events_group_0, "gp_1_events": events_group_1, "p_val": p_val }
+    # print(resp)
+    
+    return resp
+
+
+def build_event_table(group_data, idx):
+    event_table = pd.DataFrame(data=np.zeros((len(idx), 3)), index=idx, columns=['event','at_risk','p'])
     event_table.index.name = 'days'
-    start_at_risk = len(group_data)
     
-    for i in range(len(event_table)):
-        if i ==0:
-            event_table.iloc[i][1]=start_at_risk
-        else:
-            event_table.iloc[i][1]= event_table.iloc[i-1][1]-event_table.iloc[i-1][0]
-            event_num = len(group_data[group_data['death_days_to']==i])
-            event_table.iloc[i][0]=event_num
-    event_table['difference'] = event_table['at_risk']-event_table['event']
-    all_st = []
-    all_p = []
+    vc = group_data["death_days_to"].value_counts()
     
-    for j in range(len(event_table)):
-        st = event_table.iloc[j,2]/event_table.iloc[j,1]
-        all_st.append(st)
-        if j==0:
-            p = 1
+    for i, day in enumerate(event_table.index):
+        if i == 0:
+            at_risk = len(group_data)
+            p_prev = 1
         else:
-            p = p*st
-            all_p.append(p)
-    event_table['st']=all_st
-    event_table['p']=all_p
+            at_risk = event_table.iloc[i - 1]["at_risk"] - event_table.iloc[i - 1]["event"]
+            p_prev = event_table.iloc[i - 1]["p"]
+            
+        event_num = vc.get(day, default=0)
+        
+        # save metrics
+        event_table.loc[day]["event"] = event_num
+        event_table.loc[day]["at_risk"] = at_risk
+        if not at_risk: 
+            at_risk = 1 # to prevent divide by zero
+        event_table.loc[day]["p"] = p_prev * (1 - (event_num/at_risk))
+        
     return event_table
 
 '''
@@ -162,16 +224,27 @@ def run_model_creation(data_df, classifier_name, prediction_type, genelist, day_
     print("\tGenes: ", genelist)
     print("\tData looks like: ", data_df.shape)
 
+    # normlize X and select right y 
     X, y = prepare_data(data_df, genelist, prediction_type, day_threshold=day_thresh)
 
     # scoring = ["f1_weighted", "balanced_accuracy"]
-    best_clf, metrics_dict = train_model(X, y, classifier_name) #, scoring) 
+    best_clf, metrics_dict = train_model(X, y, classifier_name)
 
     predictions = best_clf.predict(X)
 
-    # feat_importance = get_feature_importance(clf, X, y, ...)
+#     return predictions
 
-    response = {"metrics": metrics_dict,  "predictions": predictions.tolist()}
+# def temp():
+
+    km_curve = get_survival_curve(data_df, predictions)
+
+    feat_importance = get_feature_importance(classifier_name, best_clf, X)
+
+    response = {"metrics": metrics_dict,  
+                "predictions": predictions.tolist(), 
+                "km_curve": km_curve,
+                "feat_importance": feat_importance}
+
     json_res = json.dumps(response)
     print(json_res)
     return json_res

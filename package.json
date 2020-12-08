@@ -20,6 +20,9 @@
   "dependencies": {
     "sirv-cli": "^1.0.0",
     "svelte-select": "^3.14.1",
-    "svelte-simple-datatables": "^0.1.25"
+    "svelte-simple-datatables": "^0.1.25",
+    "vega": "^5.17.0",
+    "vega-embed": "^6.14.0",
+    "vega-lite": "^4.17.0"
   }
 }

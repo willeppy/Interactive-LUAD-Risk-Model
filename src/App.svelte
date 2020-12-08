@@ -7,7 +7,7 @@
 	// load data
 	import * as gene_ranking_tvh from "../data/gene_ranking_tvh.json";
 	import * as gene_ranking_risk from "../data/gene_ranking_risk.json";
-	
+
 	$gene_data_tvh = gene_ranking_tvh.values;
 	$gene_data_risk = gene_ranking_risk.values;
 </script>
@@ -62,7 +62,7 @@
 		grid-column-start: 2;
 		grid-column-end: 4;
 		grid-row-start: 1;
-		/* grid-row-end: 3; */
+		grid-row-end: 3;
 	}
 
 
