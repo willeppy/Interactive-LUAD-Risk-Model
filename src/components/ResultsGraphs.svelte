@@ -3,8 +3,6 @@
 
     export let input_data;
 
-    console.log("INPUT PRED TYPE:", input_data.prediction_type)
-
     // SPECS
     let feat_imp_spec = {
         "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
@@ -36,24 +34,26 @@
                 "value": 1
             },
             "color": {"value": "#085"}
-        }
+        },
+        "config": {"axis": {"grid": false}, "view": {"stroke": "transparent"}}
+
     };
 
-    let model_dist_spec = {
+    let dist_spec_empty = {
         "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
-        "data": {"values": input_data.predictions},
+        "data": {"values": []},
         "selection": {
             "highlight": {"type": "single", "empty": "none", "on": "mouseover"}
         },
         "width": "container",
         "height": "container",
-        "title": "Model Output Distribution",
+        "title": "",
         "mark": {"type": "bar", "tooltip": true},
         "encoding": {
             "x": {
                 "field": "data",
                 "type": "ordinal",
-                "title": "Predicted Class",
+                "title": "Class",
                 "axis": {"labelAngle": 0}
             },
             "y": {
@@ -61,13 +61,15 @@
                 "field": "data",
                 "title": "Count"
             },
-            "color": {"field": "data", "type": "nominal"},
+            "color": {"field": "data", "type": "nominal", "legend": null},
             "fillOpacity": {
                 "condition": {"selection": "highlight", "value": 0.7},
                 "value": 1
             }
-        }
+        },
+        "config": {"axis": {"grid": false}, "view": {"stroke": "transparent"}}
     };
+
 
     let km_spec = {
         "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
@@ -127,23 +129,28 @@
                 }
             }
             }
-        ]
+        ],
+        "config": {"axis": {"grid": false}, "view": {"stroke": "transparent"}}
+
     }
 
-    // Testing: print out 
-    console.log("Feature Importance Spec:")
-    console.log(JSON.stringify(feat_imp_spec))
 
-    console.log("Model Dist Spec:")
-    console.log(JSON.stringify(model_dist_spec))
+    // deep copy
+    let model_out_dist_spec = JSON.parse(JSON.stringify(dist_spec_empty));
+    let class_dist_spec = JSON.parse(JSON.stringify(dist_spec_empty));
 
-    console.log("KM Spec:")
-    console.log(JSON.stringify(km_spec))
+    model_out_dist_spec.data.values = input_data.predictions;
+    class_dist_spec.data.values = input_data.y;
+
+    model_out_dist_spec.title = "Predicted Class Distribution";
+    class_dist_spec.title = "Ground Truth Class Distribution";
 
 
     // embed charts
+    embed("#gt-dist-bar", class_dist_spec, { renderer: "svg" , actions: false});
+    embed("#model-dist-bar", model_out_dist_spec, { renderer: "svg" , actions: false});
+
     embed("#feat-importance-bar", feat_imp_spec, { renderer: "svg", actions: false });
-    embed("#model-dist-bar", model_dist_spec, { renderer: "svg" , actions: false});
     embed("#km-curve-line", km_spec, { renderer: "svg" , actions: false});
 
 </script>
@@ -154,9 +161,9 @@
         padding: 1rem 1rem 1rem 0;
     }
 
-    #model-dist-bar, #feat-importance-bar, #km-curve-line {
+    .vl-target {
         height: 500px;
-        width: 500px;
+        width: 100%;
     }
 
     /* table styles generated from  https://divtable.com/table-styler/ */
@@ -187,6 +194,7 @@
 
     .blockDiv {
         display: inline-block;
+        width: 49%;
     }
 
     .key {
@@ -196,6 +204,14 @@
         padding: .5rem;
         font-weight: 600;
     }
+
+    .cl0 {
+        color: #4C78A8;
+    }
+
+    .cl1 {
+        color: #ED8317;
+    }
 </style>
 
 <div id="results-graphs-wrapper">
@@ -204,18 +220,18 @@
         This model was trained to predict <strong><em>{input_data.prediction_type}</em></strong>.    
     </p>
     {#if input_data.prediction_type == "normal_vs_tumor"}
-        <div class="key">
+        <div class="key cl0">
             0 = Healthy Tissue
         </div>
-        <div class="key">
+        <div class="key cl1">
             1 = Cancer Tissue
         </div>
     {/if}
     {#if input_data.prediction_type == "lowrisk_vs_highrisk"}
-        <div class="key">
+        <div class="key cl0">
             0 = Low Risk
         </div>
-        <div class="key">
+        <div class="key cl1">
             1 = High Risk
         </div>
     {/if}
@@ -240,18 +256,23 @@
     </div>
 
     <div class="blockDiv">
+        <h3>Ground Truth Class Distribution</h3>
+        <div class="vl-target" id="gt-dist-bar" />
+    </div>
+
+    <div class="blockDiv">
         <h3>Predicted Class Distribution</h3>
-        <div id="model-dist-bar" />
+        <div class="vl-target" id="model-dist-bar" />
     </div>
 
     <div class="blockDiv">
         <h3>Feature Importance</h3>
-        <div id="feat-importance-bar" />
+        <div class="vl-target" id="feat-importance-bar" />
     </div>
 
     <div class="blockDiv">
         <h3>Kaplan Meier Curve</h3>
         <p>Log-odds p-value that curves are significantly different: {input_data.km_curve.p_val.toFixed(4)}</p>
-        <div id="km-curve-line" />
+        <div class="vl-target" id="km-curve-line" />
     </div>
 </div>

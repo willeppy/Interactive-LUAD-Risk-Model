@@ -221,6 +221,7 @@ def run_model_creation(data_df, classifier_name, prediction_type, genelist, day_
 
     response = {"metrics": metrics_dict,  
                 "predictions": predictions.tolist(), 
+                "y": y.tolist(), 
                 "km_curve": km_curve,
                 "feat_importance": feat_importance,
                 "prediction_type": prediction_type}

@@ -54,7 +54,7 @@
     }
 
     .tableWrapper { 
-        max-height: 750px;
+        max-height: 950px;
         overflow: auto;
     }
 
